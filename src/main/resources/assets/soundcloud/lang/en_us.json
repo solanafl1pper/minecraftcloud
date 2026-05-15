@@ -1,0 +1,14 @@
+{
+  "key.category.soundcloud": "SoundCloud Player",
+  "key.soundcloud.open_player": "Open Player",
+  "key.soundcloud.play_pause": "Play / Pause",
+  "key.soundcloud.next_track": "Next Track",
+  "key.soundcloud.prev_track": "Previous Track",
+  "key.soundcloud.seek_forward": "Seek Forward 10s",
+  "key.soundcloud.seek_backward": "Seek Backward 10s",
+  "key.soundcloud.volume_up": "Volume Up",
+  "key.soundcloud.volume_down": "Volume Down",
+  "key.soundcloud.toggle_hud": "Toggle HUD",
+  "key.soundcloud.hud_size": "HUD: Cycle Size (S/M/L)",
+  "key.soundcloud.hud_buttons": "HUD: Toggle Buttons"
+}

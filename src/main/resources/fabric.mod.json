@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "soundcloud",
+	"version": "${version}",
+	"name": "SoundCloud Player",
+	"description": "SoundCloud player integrated into Minecraft with search, favorites, keybinds and seek.",
+	"authors": [
+		"solana"
+	],
+	"contact": {},
+	"license": "CC0-1.0",
+	"icon": "assets/soundcloud/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"solana.flipper.Soundcloud"
+		],
+		"client": [
+			"solana.flipper.client.SoundcloudClient"
+		],
+		"modmenu": [
+			"solana.flipper.client.SoundcloudModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"soundcloud.mixins.json",
+		{
+			"config": "soundcloud.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	}
+}

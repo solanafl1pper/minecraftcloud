@@ -1,0 +1,14 @@
+{
+  "key.category.soundcloud": "SoundCloud Плеер",
+  "key.soundcloud.open_player": "Открыть плеер",
+  "key.soundcloud.play_pause": "Воспроизведение / Пауза",
+  "key.soundcloud.next_track": "Следующий трек",
+  "key.soundcloud.prev_track": "Предыдущий трек",
+  "key.soundcloud.seek_forward": "Перемотка вперёд 10с",
+  "key.soundcloud.seek_backward": "Перемотка назад 10с",
+  "key.soundcloud.volume_up": "Громкость +",
+  "key.soundcloud.volume_down": "Громкость -",
+  "key.soundcloud.toggle_hud": "Показать/скрыть HUD",
+  "key.soundcloud.hud_size": "HUD: Размер (S/M/L)",
+  "key.soundcloud.hud_buttons": "HUD: Кнопки вкл/выкл"
+}
