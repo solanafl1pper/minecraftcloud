@@ -92,7 +92,7 @@ cd minecraftcloud
 
 The compiled mod will be located in:
 ```
-build/libs/soundcloud-0.6.8.jar
+build/libs/soundcloud-0.6.9.jar
 ```
 
 ---
