@@ -168,6 +168,8 @@ public class AudioPlayer {
         ModConfig.get().save();
     }
 
+    public void setPositionMs(long pos)      { this.positionMs = pos; }
+
     // ---------------------------------------------------------------- callbacks
 
     public void setOnTrackStart(Consumer<SoundCloudTrack> cb) { onTrackStart = cb; }
@@ -207,6 +209,12 @@ public class AudioPlayer {
                 if (info == null) {
                     Soundcloud.LOGGER.warn("[SoundCloud] No stream for: {}", track.getTitle());
                     setState(State.IDLE);
+                    return;
+                }
+                if (info.isAac()) {
+                    if (onTrackStart != null) onTrackStart.accept(track);
+                    setState(State.PLAYING);
+                    HlsAacStreamer.playHlsAac(info.url(), seekMs, this, () -> stopRequested, () -> paused);
                     return;
                 }
                 isHls = info.isHls();

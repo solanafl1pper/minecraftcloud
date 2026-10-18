@@ -26,6 +26,8 @@ public class SoundCloudAPI {
     // In-memory cache — re-fetched if null (e.g. after expiry)
     private static volatile String cachedClientId = null;
 
+    private static final String DEFAULT_CLIENT_ID = "tHVbSbDP4TaoMbPppngv6Tdry83vNbMQ";
+
     // Regex: find client_id inside __sc_hydration
     private static final Pattern HYDRATION_ID = Pattern.compile(
             "\"hydratable\"\\s*:\\s*\"apiClient\"[^}]{0,200}?\"id\"\\s*:\\s*\"([A-Za-z0-9_-]{10,})\"",
@@ -33,11 +35,11 @@ public class SoundCloudAPI {
     );
     // Fallback: client_id inside JS bundles
     private static final Pattern BUNDLE_ID = Pattern.compile(
-            "client_id[=:][\"']([A-Za-z0-9_-]{10,})[\"']"
+            "client_id[:=][\"']([a-zA-Z0-9]{32})[\"']"
     );
     // sndcdn asset script tags
     private static final Pattern SCRIPT_SRC = Pattern.compile(
-            "<script[^>]+src=[\"'](https://a-v2\\.sndcdn\\.com/assets/[^\"']+)[\"']"
+            "<script[^>]+src=[\"'](https://a-v2\\.sndcdn\\.com/assets/[^\"']+\\.js)[\"']"
     );
 
     // ---------------------------------------------------------------- client_id
@@ -46,8 +48,7 @@ public class SoundCloudAPI {
     public static String clientId() throws IOException {
         if (cachedClientId != null) return cachedClientId;
         cachedClientId = fetchClientId();
-        if (cachedClientId == null)
-            throw new IOException("Could not obtain SoundCloud client_id from soundcloud.com");
+        if (cachedClientId == null) cachedClientId = DEFAULT_CLIENT_ID;
         Soundcloud.LOGGER.info("[SoundCloud] client_id ready: {}", cachedClientId);
         return cachedClientId;
     }
@@ -61,7 +62,7 @@ public class SoundCloudAPI {
         try {
             Soundcloud.LOGGER.info("[SoundCloud] Fetching client_id...");
             String html = get(HOME);
-            if (html == null) return null;
+            if (html == null) return DEFAULT_CLIENT_ID;
 
             // Primary: __sc_hydration blob
             Matcher m = HYDRATION_ID.matcher(html);
@@ -80,7 +81,7 @@ public class SoundCloudAPI {
         } catch (Exception e) {
             Soundcloud.LOGGER.warn("[SoundCloud] fetchClientId failed: {}", e.getMessage());
         }
-        return null;
+        return DEFAULT_CLIENT_ID;
     }
 
     // ---------------------------------------------------------------- search
@@ -116,8 +117,7 @@ public class SoundCloudAPI {
 
     /**
      * Returns the best streamable URL for a track.
-     * Prefers progressive MP3; falls back to HLS.
-     * Caller must handle HLS (.m3u8) separately if needed.
+     * Prefers progressive MP3; falls back to HLS AAC.
      */
     public static StreamInfo getStreamInfo(SoundCloudTrack track) throws IOException {
         String cid = clientId();
@@ -140,42 +140,33 @@ public class SoundCloudAPI {
             if (isSnipped(tc)) continue;
             if (isProgressiveMp3(tc)) {
                 String resolved = resolveTranscoding(tc, cid, auth);
-                if (resolved != null) return new StreamInfo(resolved, false);
+                if (resolved != null) return new StreamInfo(resolved, false, false);
             }
         }
-        // Pass 2: any progressive, not snipped
+        // Pass 2: HLS AAC (SoundCloud primary modern stream)
         for (JsonElement el : transcodings) {
             JsonObject tc = el.getAsJsonObject();
             if (isSnipped(tc)) continue;
-            if (isProgressive(tc)) {
+            if (isHlsAac(tc)) {
                 String resolved = resolveTranscoding(tc, cid, auth);
-                if (resolved != null) return new StreamInfo(resolved, false);
+                if (resolved != null) return new StreamInfo(resolved, true, true);
             }
         }
-        // Pass 3: HLS MP3, not snipped
-        for (JsonElement el : transcodings) {
-            JsonObject tc = el.getAsJsonObject();
-            if (isSnipped(tc)) continue;
-            if (isHlsMp3(tc)) {
-                String resolved = resolveTranscoding(tc, cid, auth);
-                if (resolved != null) return new StreamInfo(resolved, true);
-            }
-        }
-        // Pass 4: any HLS, not snipped
+        // Pass 3: any HLS, not snipped
         for (JsonElement el : transcodings) {
             JsonObject tc = el.getAsJsonObject();
             if (isSnipped(tc)) continue;
             if (isHls(tc)) {
                 String resolved = resolveTranscoding(tc, cid, auth);
-                if (resolved != null) return new StreamInfo(resolved, true);
+                if (resolved != null) return new StreamInfo(resolved, true, isAac(tc));
             }
         }
-        // Pass 5: snipped fallback (preview only)
+        // Pass 4: progressive fallback
         for (JsonElement el : transcodings) {
             JsonObject tc = el.getAsJsonObject();
-            if (isProgressiveMp3(tc)) {
+            if (isProgressive(tc)) {
                 String resolved = resolveTranscoding(tc, cid, auth);
-                if (resolved != null) return new StreamInfo(resolved, false);
+                if (resolved != null) return new StreamInfo(resolved, false, false);
             }
         }
         return null;
@@ -183,7 +174,7 @@ public class SoundCloudAPI {
 
     // ---------------------------------------------------------------- data types
 
-    public record StreamInfo(String url, boolean isHls) {}
+    public record StreamInfo(String url, boolean isHls, boolean isAac) {}
 
     public record ResolveResult(SoundCloudTrack track, SoundCloudPlaylist playlist) {
         public boolean isTrack()    { return track != null; }
@@ -257,6 +248,14 @@ public class SoundCloudAPI {
     }
     private static boolean isProgressive(JsonObject tc) {
         return "progressive".equals(protocol(tc));
+    }
+    private static boolean isHlsAac(JsonObject tc) {
+        return isHls(tc) && isAac(tc);
+    }
+    private static boolean isAac(JsonObject tc) {
+        String m = mime(tc);
+        String p = str(tc, "preset", "");
+        return m.contains("mp4") || m.contains("aac") || p.contains("aac");
     }
     private static boolean isHlsMp3(JsonObject tc) {
         return isHls(tc) && mime(tc).contains("mpeg");

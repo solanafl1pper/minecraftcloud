@@ -40,6 +40,10 @@ dependencies {
 	implementation "javazoom:jlayer:1.0.1"
 	include "javazoom:jlayer:1.0.1"
 
+	// JAAD for pure-Java AAC decoding (SoundCloud streams)
+	implementation "de.sfuhrm:jaad:0.8.7"
+	include "de.sfuhrm:jaad:0.8.7"
+
 	// Gson for JSON config
 	implementation "com.google.code.gson:gson:2.10.1"
 }
