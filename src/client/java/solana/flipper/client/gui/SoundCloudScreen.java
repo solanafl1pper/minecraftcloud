@@ -685,6 +685,13 @@ public class SoundCloudScreen extends Screen {
                     }
                 }
 
+                // 1-click Play on left icon area
+                if (btn == 0 && mx <= ix + 42) {
+                    playTrack(t, list, idx);
+                    selectedIndex = idx;
+                    return true;
+                }
+
                 // Row click / double click
                 if (btn == 0) {
                     if (selectedIndex == idx) {
@@ -741,10 +748,20 @@ public class SoundCloudScreen extends Screen {
             player.seekRelative(-10);
             return true;
         }
-        // Play / Pause
+        // Play / Pause (Instant, handles all player states)
         int bPlayX = startX + (bw + gap) * 3;
         if (mx >= bPlayX && mx <= bPlayX + bw && my >= ctrlY && my <= ctrlY + bh) {
-            player.pause();
+            if (player.getState() == AudioPlayer.State.PLAYING || player.getState() == AudioPlayer.State.PAUSED) {
+                player.pause();
+            } else {
+                if (selectedIndex >= 0 && selectedIndex < getActiveList().size()) {
+                    playTrack(getActiveList().get(selectedIndex), getActiveList(), selectedIndex);
+                } else if (!player.getQueue().isEmpty()) {
+                    player.play(player.getQueue().get(Math.max(0, player.getQueueIndex())));
+                } else if (!getActiveList().isEmpty()) {
+                    playTrack(getActiveList().get(0), getActiveList(), 0);
+                }
+            }
             return true;
         }
         // Forward +10s

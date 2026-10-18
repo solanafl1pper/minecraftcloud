@@ -123,12 +123,20 @@ public class AudioPlayer {
             paused = false;
             setState(State.PLAYING);
             synchronized (this) { notifyAll(); }
+        } else if (state == State.IDLE || state == State.STOPPED) {
+            if (currentTrack != null) {
+                playCurrentIndex();
+            } else if (!queue.isEmpty()) {
+                queueIndex = Math.max(0, queueIndex);
+                playCurrentIndex();
+            }
         }
     }
 
     public void stop() {
         stopRequested = true;
         paused = false;
+        HlsAacStreamer.stopActiveLine();
         synchronized (this) { notifyAll(); }
         if (playFuture != null) playFuture.cancel(true);
         closeAudio();
@@ -385,6 +393,7 @@ public class AudioPlayer {
     }
 
     private void closeAudio() {
+        HlsAacStreamer.stopActiveLine();
         try { if (audioDevice != null) { audioDevice.close(); audioDevice = null; } } catch (Exception ignored) {}
         try { if (bitstream  != null) { bitstream.close();   bitstream  = null; } } catch (Exception ignored) {}
         decoder = null;

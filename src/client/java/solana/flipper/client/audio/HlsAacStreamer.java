@@ -17,6 +17,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
@@ -24,11 +25,26 @@ import java.util.function.BooleanSupplier;
  * Pure-Java HLS AAC Streamer and Decoder using JAAD.
  *
  * Resolves SoundCloud HLS fragmented MP4 (.m4s) audio streams,
- * demuxes samples, decodes AAC into 16-bit PCM, and plays via SourceDataLine.
+ * demuxes samples, decodes AAC into clean 16-bit PCM (little-endian),
+ * and plays via SourceDataLine with zero static and instant controls.
  */
 public class HlsAacStreamer {
 
     public record Segment(String url, double durationSec) {}
+
+    private static volatile SourceDataLine activeLine = null;
+
+    public static void stopActiveLine() {
+        SourceDataLine l = activeLine;
+        if (l != null) {
+            try {
+                l.stop();
+                l.flush();
+                l.close();
+            } catch (Exception ignored) {}
+            activeLine = null;
+        }
+    }
 
     public static boolean playHlsAac(String m3u8Url, int seekMs,
                                      AudioPlayer player,
@@ -36,6 +52,9 @@ public class HlsAacStreamer {
                                      BooleanSupplier isPaused) {
         SourceDataLine line = null;
         try {
+            // Stop any leftover playback
+            stopActiveLine();
+
             // 1. Fetch playlist m3u8
             String playlist = SoundCloudAPI.get(m3u8Url);
             if (playlist == null || playlist.isEmpty()) {
@@ -75,8 +94,8 @@ public class HlsAacStreamer {
             }
 
             // 2. Download init.mp4 to get AAC DecoderSpecificInfo
-            byte[] initBytes = downloadBytes(initUrl);
-            if (initBytes == null) return false;
+            byte[] initBytes = downloadBytes(initUrl, isStopRequested);
+            if (initBytes == null || isStopRequested.getAsBoolean()) return false;
 
             MP4Container cont = new MP4Container(new ByteArrayInputStream(initBytes));
             AudioTrack at = (AudioTrack) cont.getMovie().getTracks().get(0);
@@ -86,13 +105,18 @@ public class HlsAacStreamer {
 
             Decoder decoder = new Decoder(dsi);
             SampleBuffer sampleBuffer = new SampleBuffer();
+            // CRITICAL: Force Little-Endian so 16-bit PCM matches AudioFormat!
+            sampleBuffer.setBigEndian(false);
 
-            // 3. Open JavaSound output line
+            // 3. Open JavaSound output line (44100Hz 16-bit stereo signed little-endian)
             AudioFormat format = new AudioFormat(sampleRate, 16, channels, true, false);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
             line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(format, sampleRate * channels * 2 / 2); // ~0.5s buffer
+            // Low latency ~200ms buffer (sampleRate * channels * 2 * 0.2)
+            int bufSize = Math.max(16384, (int)(sampleRate * channels * 2 * 0.25));
+            line.open(format, bufSize);
             line.start();
+            activeLine = line;
 
             // 4. Calculate start segment for seek
             int startSeg = 0;
@@ -114,14 +138,18 @@ public class HlsAacStreamer {
             for (int sIdx = startSeg; sIdx < segments.size(); sIdx++) {
                 if (isStopRequested.getAsBoolean()) break;
 
-                // Handle pause
-                while (isPaused.getAsBoolean() && !isStopRequested.getAsBoolean()) {
-                    try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+                // Handle pause immediately
+                if (isPaused.getAsBoolean()) {
+                    line.stop();
+                    while (isPaused.getAsBoolean() && !isStopRequested.getAsBoolean()) {
+                        try { Thread.sleep(20); } catch (InterruptedException ignored) {}
+                    }
+                    if (isStopRequested.getAsBoolean()) break;
+                    line.start();
                 }
-                if (isStopRequested.getAsBoolean()) break;
 
                 Segment seg = segments.get(sIdx);
-                byte[] segBytes = downloadBytes(seg.url());
+                byte[] segBytes = downloadBytes(seg.url(), isStopRequested);
                 if (segBytes == null || segBytes.length < 32) continue;
 
                 // Parse 'trun' to get sample sizes
@@ -170,10 +198,15 @@ public class HlsAacStreamer {
 
                 for (int i = 0; i < sampleCount; i++) {
                     if (isStopRequested.getAsBoolean()) break;
-                    while (isPaused.getAsBoolean() && !isStopRequested.getAsBoolean()) {
-                        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+
+                    if (isPaused.getAsBoolean()) {
+                        line.stop();
+                        while (isPaused.getAsBoolean() && !isStopRequested.getAsBoolean()) {
+                            try { Thread.sleep(20); } catch (InterruptedException ignored) {}
+                        }
+                        if (isStopRequested.getAsBoolean()) break;
+                        line.start();
                     }
-                    if (isStopRequested.getAsBoolean()) break;
 
                     int sz = sizes[i];
                     if (offset + sz > segBytes.length) break;
@@ -186,11 +219,15 @@ public class HlsAacStreamer {
                         decoder.decodeFrame(frame, sampleBuffer);
                         byte[] pcm = sampleBuffer.getData();
 
-                        // Apply volume
+                        // Apply volume cleanly
                         float vol = ModConfig.get().volume;
-                        if (vol < 0.999f) {
+                        if (vol <= 0.001f) {
+                            Arrays.fill(pcm, (byte) 0);
+                        } else if (vol < 0.999f) {
                             for (int p = 0; p < pcm.length - 1; p += 2) {
-                                short val = (short) ((pcm[p] & 0xFF) | (pcm[p + 1] << 8));
+                                int low = pcm[p] & 0xFF;
+                                int high = pcm[p + 1];
+                                short val = (short) ((high << 8) | low);
                                 val = (short) (val * vol);
                                 pcm[p] = (byte) (val & 0xFF);
                                 pcm[p + 1] = (byte) ((val >> 8) & 0xFF);
@@ -205,7 +242,7 @@ public class HlsAacStreamer {
                 }
             }
 
-            if (line != null) {
+            if (line != null && !isStopRequested.getAsBoolean()) {
                 line.drain();
             }
             return true;
@@ -215,18 +252,24 @@ public class HlsAacStreamer {
             return false;
         } finally {
             if (line != null) {
-                try { line.close(); } catch (Exception ignored) {}
+                try {
+                    line.stop();
+                    line.flush();
+                    line.close();
+                } catch (Exception ignored) {}
             }
+            activeLine = null;
         }
     }
 
-    private static byte[] downloadBytes(String urlStr) {
+    private static byte[] downloadBytes(String urlStr, BooleanSupplier isStopRequested) {
+        if (isStopRequested.getAsBoolean()) return null;
         try {
             URL u = URI.create(urlStr).toURL();
             HttpURLConnection conn = (HttpURLConnection) u.openConnection();
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(15000);
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(6000);
             if (conn.getResponseCode() != 200) {
                 conn.disconnect();
                 return null;
@@ -237,7 +280,9 @@ public class HlsAacStreamer {
                 conn.disconnect();
             }
         } catch (Exception e) {
-            Soundcloud.LOGGER.warn("[SoundCloud] downloadBytes error for {}: {}", urlStr, e.getMessage());
+            if (!isStopRequested.getAsBoolean()) {
+                Soundcloud.LOGGER.warn("[SoundCloud] downloadBytes error for {}: {}", urlStr, e.getMessage());
+            }
             return null;
         }
     }
