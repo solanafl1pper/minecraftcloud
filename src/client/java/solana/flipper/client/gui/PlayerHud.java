@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.Identifier;
 import solana.flipper.api.SoundCloudTrack;
@@ -11,25 +12,21 @@ import solana.flipper.client.audio.AudioPlayer;
 import solana.flipper.config.ModConfig;
 
 /**
- * In-game mini player HUD.
+ * Modernized in-game music player HUD.
  *
- * Two modes (toggle with H):
- *   COMPACT  — just title + progress bar, no buttons
- *   FULL     — title + progress + ⏮ ⏯ ⏭ 🔀 🔁 Vol
- *
- * Three sizes: S (180px), M (260px), L (340px)
- * Draggable: hold left-click on the title area and drag.
- * Position saved to config.
- *
- * Keybind H  → toggle visible
- * Keybind H (long / double) → not needed; use HudEditScreen (open via screen)
+ * Supports:
+ * - COMPACT mode: Minimal title + glowing progress bar
+ * - FULL mode: Title + animated equalizer + progress bar + playback controls (⏮ ⏯ ⏭ 🔀 🔁) + volume
+ * - 3 Size presets: S (180px), M (250px), L (330px)
+ * - 9 Screen anchors + interactive in-game drag positioning
  */
 public class PlayerHud implements HudElement {
 
-    // ── singleton ─────────────────────────────────────────────────────────────
     private static PlayerHud INSTANCE;
 
-    public static PlayerHud getInstance() { return INSTANCE; }
+    public static PlayerHud getInstance() {
+        return INSTANCE;
+    }
 
     public static void register() {
         INSTANCE = new PlayerHud();
@@ -38,46 +35,38 @@ public class PlayerHud implements HudElement {
                 INSTANCE);
     }
 
-    // ── palette ───────────────────────────────────────────────────────────────
-    private static final int C_BG      = 0xD00F172A;
-    private static final int C_BORDER  = 0xFF1E293B;
-    private static final int C_ACCENT  = 0xFFFF5500;
-    private static final int C_ACCENT2 = 0xFFFF7733;
-    private static final int C_TEXT    = 0xFFFFFFFF;
-    private static final int C_SUB     = 0xFF94A3B8;
-    private static final int C_PROG    = 0xFF334155;
-    private static final int C_BTN     = 0xFF1E293B;
-    private static final int C_BTN_HOV = 0xFF334155;
-    private static final int C_BTN_ACT = 0xFF7C3AED;
-    private static final int C_GREEN   = 0xFF22C55E;
-
-    // ── size presets ──────────────────────────────────────────────────────────
+    // ── Size presets ──────────────────────────────────────────────────────────
     // { width, height-compact, height-full }
     private static final int[][] SIZES = {
-            {180, 22, 42},   // S
-            {260, 24, 48},   // M
-            {340, 26, 54},   // L
+            {180, 24, 46},   // S
+            {250, 26, 52},   // M
+            {330, 28, 58},   // L
     };
-    private static final int PAD = 5;
+    private static final int PAD = 6;
 
-    // ── drag state ────────────────────────────────────────────────────────────
+    // ── Drag & interaction state ──────────────────────────────────────────────
     private boolean dragging     = false;
     private double  dragOffX     = 0;
     private double  dragOffY     = 0;
     private boolean draggingProg = false;
 
-    // ── last rendered bounds (for hit-testing) ────────────────────────────────
     private int lastX, lastY, lastW, lastH;
-
-    // ── mouse position (updated each tick from SoundcloudClient) ─────────────
     private double mouseX = 0, mouseY = 0;
+    private long startTime = System.currentTimeMillis();
 
-    public void updateMouse(double mx, double my) { mouseX = mx; mouseY = my; }
+    public void updateMouse(double mx, double my) {
+        mouseX = mx;
+        mouseY = my;
+    }
 
-    // ── public API ────────────────────────────────────────────────────────────
+    public static boolean isVisible() {
+        return ModConfig.get().hudVisible;
+    }
 
-    public static boolean isVisible()  { return ModConfig.get().hudVisible; }
-    public static void toggle()        { ModConfig.get().hudVisible = !ModConfig.get().hudVisible; ModConfig.get().save(); }
+    public static void toggle() {
+        ModConfig.get().hudVisible = !ModConfig.get().hudVisible;
+        ModConfig.get().save();
+    }
 
     public static void cycleSize() {
         ModConfig cfg = ModConfig.get();
@@ -91,7 +80,7 @@ public class PlayerHud implements HudElement {
         cfg.save();
     }
 
-    // ── render ────────────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────────
 
     @Override
     public void render(GuiGraphics g, DeltaTracker dt) {
@@ -103,25 +92,23 @@ public class PlayerHud implements HudElement {
 
         AudioPlayer player = AudioPlayer.getInstance();
         SoundCloudTrack track = player.getCurrentTrack();
-        if (track == null
-                || player.getState() == AudioPlayer.State.IDLE
-                || player.getState() == AudioPlayer.State.STOPPED) return;
+        if (track == null || player.getState() == AudioPlayer.State.IDLE || player.getState() == AudioPlayer.State.STOPPED) {
+            return;
+        }
 
         int sw = mc.getWindow().getGuiScaledWidth();
         int sh = mc.getWindow().getGuiScaledHeight();
 
-        int[] sz  = SIZES[Math.max(0, Math.min(2, cfg.hudSize))];
-        int   w   = sz[0];
-        int   h   = cfg.hudButtons ? sz[2] : sz[1];
+        int[] sz = SIZES[Math.max(0, Math.min(2, cfg.hudSize))];
+        int w = sz[0];
+        int h = cfg.hudButtons ? sz[2] : sz[1];
 
-        // Resolve position from anchor (or manual drag override)
+        // Resolve coordinates
         int x, y;
         if (cfg.hudX >= 0 && cfg.hudY >= 0) {
-            // Manual drag position
             x = Math.max(0, Math.min(sw - w, cfg.hudX));
             y = Math.max(0, Math.min(sh - h, cfg.hudY));
         } else {
-            // Anchor-based position
             int margin = 8;
             x = switch (cfg.hudAnchorCol) {
                 case 0 -> margin;
@@ -137,121 +124,101 @@ public class PlayerHud implements HudElement {
 
         lastX = x; lastY = y; lastW = w; lastH = h;
 
-        var font = mc.font;
+        Font font = mc.font;
         long posMs = player.getPositionMs();
-        int  durMs = track.getDurationMs();
+        int durMs = track.getDurationMs();
+        float animSec = (System.currentTimeMillis() - startTime) / 1000f;
+        boolean isPlaying = player.getState() == AudioPlayer.State.PLAYING;
 
-        // ── Background ───────────────────────────────────────────────────────
-        // Outer border
-        g.fill(x,     y,     x + w,     y + h,     C_BORDER);
-        // Inner bg
-        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, C_BG);
-        // Top accent line
-        g.fill(x + 1, y + 1, x + w - 1, y + 2, C_ACCENT);
+        // 1. Sleek Card Container
+        GuiHelper.drawRoundedCard(g, x, y, w, h, 0xE80F1522, GuiHelper.C_WINDOW_BORDER);
+        g.fill(x + 2, y, x + w - 2, y + 1, GuiHelper.C_ACCENT);
 
-        // ── Title row ────────────────────────────────────────────────────────
+        // 2. Title Row
         int titleY = y + 4;
-        int scale  = cfg.hudSize;   // 0/1/2 → font scale stays 1, just more chars
 
-        // State icon (left)
-        String icon = switch (player.getState()) {
-            case PLAYING -> "§a>";
-            case PAUSED  -> "§e||";
-            case LOADING -> "§e..";
-            default      -> "§7[]";
-        };
-        g.drawString(font, icon, x + PAD, titleY, C_TEXT, false);
+        // Animated Equalizer or Play/Pause Icon
+        if (isPlaying) {
+            GuiHelper.drawEqualizer(g, x + PAD, titleY + 1, 10, animSec, GuiHelper.C_ACCENT);
+        } else {
+            g.drawString(font, "§6⏸", x + PAD, titleY + 1, GuiHelper.C_ACCENT, false);
+        }
 
-        // Time (right)
-        int ps = (int)(posMs / 1000);
+        // Time display on the right
+        int ps = (int) (posMs / 1000);
         String timeStr = String.format("%d:%02d/%s", ps / 60, ps % 60, track.getFormattedDuration());
         int timeW = font.width(timeStr);
-        g.drawString(font, "§8" + timeStr, x + w - timeW - PAD, titleY, C_SUB, false);
+        g.drawString(font, "§8" + timeStr, x + w - timeW - PAD, titleY + 1, GuiHelper.C_TEXT_SUB, false);
 
-        // Title + artist (centre, clipped)
-        int titleMaxW = w - PAD * 2 - 14 - timeW - 4;
-        int maxChars  = Math.max(8, titleMaxW / 6);
-        String titleStr = "§f" + trunc(track.getTitle(), maxChars / 2)
-                + " §7· §e" + trunc(track.getArtist(), maxChars / 2);
-        g.drawCenteredString(font, titleStr, x + w / 2, titleY, C_TEXT);
+        // Track title & artist (centred / clipped)
+        int maxTitleW = w - PAD * 2 - 20 - timeW;
+        int maxChars = Math.max(6, maxTitleW / 6);
+        String titleStr = "§f" + trunc(track.getTitle(), maxChars / 2) + " §7" + trunc(track.getArtist(), maxChars / 2);
+        g.drawString(font, titleStr, x + PAD + 16, titleY + 1, GuiHelper.C_TEXT_MAIN, false);
 
-        // ── Progress bar ─────────────────────────────────────────────────────
-        int pbY = y + h - (cfg.hudButtons ? sz[2] - sz[1] + 5 : 6);
+        // 3. Progress Bar
+        int pbY = y + (cfg.hudButtons ? h - 22 : h - 7);
         int pbX = x + PAD;
         int pbW = w - PAD * 2;
         int pbH = 3;
 
-        g.fill(pbX, pbY, pbX + pbW, pbY + pbH, C_PROG);
+        GuiHelper.drawRoundedCard(g, pbX, pbY, pbW, pbH, GuiHelper.C_PROG_TRACK, 0);
         if (durMs > 0) {
-            int filled = (int)((float) posMs / durMs * pbW);
-            filled = Math.max(0, Math.min(pbW, filled));
-            g.fill(pbX, pbY, pbX + filled, pbY + pbH, C_ACCENT);
-            // Thumb
-            boolean hovPb = mouseY >= pbY - 3 && mouseY <= pbY + pbH + 3
-                    && mouseX >= pbX && mouseX <= pbX + pbW;
+            int filled = Math.max(0, Math.min(pbW, (int) ((float) posMs / durMs * pbW)));
+            g.fill(pbX, pbY, pbX + filled, pbY + pbH, GuiHelper.C_ACCENT);
+
+            boolean hovPb = mouseY >= pbY - 3 && mouseY <= pbY + pbH + 3 && mouseX >= pbX && mouseX <= pbX + pbW;
             int thumbR = hovPb ? 3 : 2;
-            g.fill(pbX + filled - thumbR, pbY - 1,
-                   pbX + filled + thumbR, pbY + pbH + 1, C_ACCENT2);
+            g.fill(pbX + filled - thumbR, pbY - 1, pbX + filled + thumbR, pbY + pbH + 1, GuiHelper.C_TEXT_MAIN);
         }
 
-        // ── Buttons row (FULL mode only) ──────────────────────────────────────
+        // 4. Buttons Row (FULL Mode)
         if (cfg.hudButtons) {
-            int btnY  = y + h - 14;
-            int btnH  = 11;
-            int btnW  = 20;   // all same width
-            int gap   = 2;
-            // 5 buttons: |<  ||/>  >|  Shuf  Rep
-            // total = 5*20 + 4*2 = 108, centred
-            int startX = x + (w - (5 * btnW + 4 * gap)) / 2;
+            int btnY = y + h - 16;
+            int btnH = 12;
+            int btnW = 18;
+            int gap = 3;
 
-            drawBtn(g, font, "|<",  startX,                    btnY, btnW, btnH, false);
-            drawBtn(g, font, player.getState() == AudioPlayer.State.PLAYING ? "||" : ">",
-                                    startX + (btnW + gap),     btnY, btnW, btnH, false);
-            drawBtn(g, font, ">|",  startX + (btnW + gap) * 2, btnY, btnW, btnH, false);
-            drawBtn(g, font, "Shf", startX + (btnW + gap) * 3, btnY, btnW, btnH, player.isShuffle());
-            drawBtn(g, font,
-                    player.getRepeat() == AudioPlayer.RepeatMode.ONE ? "R:1" :
-                    player.getRepeat() == AudioPlayer.RepeatMode.ALL ? "R:A" : "Rep",
-                    startX + (btnW + gap) * 4, btnY, btnW, btnH,
-                    player.getRepeat() != AudioPlayer.RepeatMode.OFF);
+            // 5 buttons: ⏮ ⏯ ⏭ 🔀 🔁
+            int totalBtnW = 5 * btnW + 4 * gap;
+            int startX = x + (w - totalBtnW) / 2;
 
-            // Volume slider — left side, same row
-            int volX   = x + 4;
-            int volW2  = startX - x - 8;
-            if (volW2 > 10) {
-                int volBarY = btnY + 4;
-                g.fill(volX, volBarY, volX + volW2, volBarY + 3, C_PROG);
-                g.fill(volX, volBarY, volX + (int)(player.getVolume() * volW2), volBarY + 3, C_ACCENT2);
-            }
+            drawHudBtn(g, font, "⏮", startX, btnY, btnW, btnH, false);
+            drawHudBtn(g, font, isPlaying ? "⏸" : "▶", startX + (btnW + gap), btnY, btnW, btnH, true);
+            drawHudBtn(g, font, "⏭", startX + (btnW + gap) * 2, btnY, btnW, btnH, false);
+            drawHudBtn(g, font, "🔀", startX + (btnW + gap) * 3, btnY, btnW, btnH, player.isShuffle());
+
+            String repStr = player.getRepeat() == AudioPlayer.RepeatMode.ONE ? "🔂" : "🔁";
+            drawHudBtn(g, font, repStr, startX + (btnW + gap) * 4, btnY, btnW, btnH, player.getRepeat() != AudioPlayer.RepeatMode.OFF);
+
+            // Mini volume bar on the left
+            int volW = Math.max(12, startX - x - 12);
+            int volX = x + PAD;
+            int volBarY = btnY + 4;
+            GuiHelper.drawRoundedCard(g, volX, volBarY, volW, 3, GuiHelper.C_PROG_TRACK, 0);
+            int volFill = (int) (player.getVolume() * volW);
+            g.fill(volX, volBarY, volX + volFill, volBarY + 3, GuiHelper.C_ACCENT);
         }
 
-        // ── Drag handle indicator (top-right corner) ──────────────────────────
-        boolean hovHud = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
-        if (hovHud) {
-            // Show resize/drag hint dots
-            g.fill(x + w - 5, y + 3, x + w - 3, y + 5, 0x88FFFFFF);
-            g.fill(x + w - 5, y + 6, x + w - 3, y + 8, 0x88FFFFFF);
+        // Hover grip dots (visual drag indicator)
+        boolean hov = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+        if (hov) {
+            g.fill(x + w - 6, y + 3, x + w - 4, y + 5, 0x88FFFFFF);
+            g.fill(x + w - 6, y + 6, x + w - 4, y + 8, 0x88FFFFFF);
         }
-
-        // ── Shuffle/Repeat dots ───────────────────────────────────────────────
-        if (player.isShuffle())
-            g.fill(x + 2, y + h - 3, x + 4, y + h - 1, C_GREEN);
-        if (player.getRepeat() != AudioPlayer.RepeatMode.OFF)
-            g.fill(x + w - 4, y + h - 3, x + w - 2, y + h - 1, C_GREEN);
     }
 
-    private void drawBtn(GuiGraphics g, net.minecraft.client.gui.Font font,
-                         String label, int bx, int by, int bw, int bh, boolean active) {
-        boolean hov = mouseX >= bx && mouseX <= bx + bw
-                && mouseY >= by && mouseY <= by + bh;
-        int bg = active ? C_BTN_ACT : (hov ? C_BTN_HOV : C_BTN);
-        g.fill(bx, by, bx + bw, by + bh, bg);
-        g.fill(bx, by, bx + bw, by + 1, active ? C_ACCENT : 0xFF334155);
+    private void drawHudBtn(GuiGraphics g, Font font, String label, int bx, int by, int bw, int bh, boolean active) {
+        boolean hov = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
+        int bg = active ? GuiHelper.C_ACCENT : (hov ? GuiHelper.C_CARD_HOVER : GuiHelper.C_CARD_BG);
+        int border = active ? GuiHelper.C_ACCENT_HOVER : (hov ? GuiHelper.C_WINDOW_BORDER : 0);
+
+        GuiHelper.drawRoundedCard(g, bx, by, bw, bh, bg, border);
         int lw = font.width(label);
-        g.drawString(font, "§f" + label, bx + (bw - lw) / 2, by + 2, C_TEXT, false);
+        g.drawString(font, label, bx + (bw - lw) / 2, by + 2, active ? 0xFFFFFFFF : GuiHelper.C_TEXT_MAIN, false);
     }
 
-    // ── Mouse event handlers (called from SoundcloudClient) ───────────────────
+    // ── Mouse Handlers ────────────────────────────────────────────────────────
 
     public boolean onMousePress(double mx, double my, int btn) {
         if (!ModConfig.get().hudVisible) return false;
@@ -261,15 +228,15 @@ public class PlayerHud implements HudElement {
         AudioPlayer player = AudioPlayer.getInstance();
         SoundCloudTrack track = player.getCurrentTrack();
 
-        // Progress bar seek
-        int[] sz  = SIZES[Math.max(0, Math.min(2, cfg.hudSize))];
-        int   pbY = lastY + lastH - (cfg.hudButtons ? sz[2] - sz[1] + 5 : 6);
-        int   pbX = lastX + PAD;
-        int   pbW = lastW - PAD * 2;
+        int[] sz = SIZES[Math.max(0, Math.min(2, cfg.hudSize))];
+        int pbY = lastY + (cfg.hudButtons ? sz[2] - 22 : sz[1] - 7);
+        int pbX = lastX + PAD;
+        int pbW = lastW - PAD * 2;
 
-        if (my >= pbY - 3 && my <= pbY + 6 && track != null && track.getDurationMs() > 0) {
+        // Progress bar seek
+        if (my >= pbY - 3 && my <= pbY + 7 && track != null && track.getDurationMs() > 0) {
             float frac = (float) Math.max(0, Math.min(1, (mx - pbX) / pbW));
-            player.seekToSeconds((int)(frac * track.getDurationMs() / 1000));
+            player.seekToSeconds((int) (frac * track.getDurationMs() / 1000));
             draggingProg = true;
             return true;
         }
@@ -279,23 +246,34 @@ public class PlayerHud implements HudElement {
             int btnY = lastY + lastH - 16;
             int btnH = 12;
             int btnW = 18;
-            int cx   = lastX + lastW / 2;
+            int gap = 3;
+            int totalBtnW = 5 * btnW + 4 * gap;
+            int startX = lastX + (lastW - totalBtnW) / 2;
 
             if (my >= btnY && my <= btnY + btnH) {
-                // |<  prev
-                if (mx >= cx - btnW * 3 - 4 && mx <= cx - btnW * 2 - 4) { player.previous(); return true; }
-                // ||/>  pause
-                if (mx >= cx - btnW - 2     && mx <= cx + 6)             { player.pause();    return true; }
-                // >|  next
-                if (mx >= cx + 6            && mx <= cx + btnW + 6)      { player.next();     return true; }
-                // Shuf
-                if (mx >= cx + btnW + 10    && mx <= cx + btnW * 2 + 16) { player.setShuffle(!player.isShuffle()); return true; }
-                // Rep
-                if (mx >= cx + btnW * 2 + 20 && mx <= cx + btnW * 3 + 30) { player.cycleRepeat(); return true; }
+                // ⏮
+                if (mx >= startX && mx <= startX + btnW) { player.previous(); return true; }
+                // ⏯
+                if (mx >= startX + (btnW + gap) && mx <= startX + (btnW + gap) + btnW) { player.pause(); return true; }
+                // ⏭
+                if (mx >= startX + (btnW + gap) * 2 && mx <= startX + (btnW + gap) * 2 + btnW) { player.next(); return true; }
+                // 🔀
+                if (mx >= startX + (btnW + gap) * 3 && mx <= startX + (btnW + gap) * 3 + btnW) { player.setShuffle(!player.isShuffle()); return true; }
+                // 🔁
+                if (mx >= startX + (btnW + gap) * 4 && mx <= startX + (btnW + gap) * 4 + btnW) { player.cycleRepeat(); return true; }
+            }
+
+            // Volume bar on left
+            int volW = Math.max(12, startX - lastX - 12);
+            int volX = lastX + PAD;
+            if (mx >= volX && mx <= volX + volW && my >= btnY && my <= btnY + btnH) {
+                float v = (float) (mx - volX) / volW;
+                player.setVolume(v);
+                return true;
             }
         }
 
-        // Drag: title area (top part)
+        // Drag: top title area
         if (my <= lastY + lastH / 2) {
             dragging = true;
             dragOffX = mx - lastX;
@@ -312,7 +290,10 @@ public class PlayerHud implements HudElement {
             ModConfig.get().save();
             return true;
         }
-        if (draggingProg) { draggingProg = false; return true; }
+        if (draggingProg) {
+            draggingProg = false;
+            return true;
+        }
         return false;
     }
 
@@ -323,7 +304,7 @@ public class PlayerHud implements HudElement {
             if (track != null && track.getDurationMs() > 0) {
                 int pbX = lastX + PAD, pbW = lastW - PAD * 2;
                 float frac = (float) Math.max(0, Math.min(1, (mx - pbX) / pbW));
-                player.seekToSeconds((int)(frac * track.getDurationMs() / 1000));
+                player.seekToSeconds((int) (frac * track.getDurationMs() / 1000));
             }
             return true;
         }
@@ -339,10 +320,8 @@ public class PlayerHud implements HudElement {
         return false;
     }
 
-    // ── util ──────────────────────────────────────────────────────────────────
-
     private static String trunc(String s, int max) {
         if (s == null) return "";
-        return s.length() > max ? s.substring(0, max - 1) + "…" : s;
+        return s.length() > max ? s.substring(0, Math.max(0, max - 1)) + "…" : s;
     }
 }

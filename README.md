@@ -17,7 +17,7 @@ Listen to SoundCloud without leaving your game. CloudBeats brings a full-feature
 
 ## Requirements
 
-- Minecraft 1.21.11
+- Minecraft 1.21.11 / 26.3
 - Fabric Loader ≥ 0.19.2
 - Fabric API
 
