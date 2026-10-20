@@ -4,8 +4,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import solana.flipper.api.SoundCloudAPI;
 import solana.flipper.api.SoundCloudPlaylist;
@@ -606,10 +604,7 @@ public class SoundCloudScreen extends Screen {
     // ── Input Handling ────────────────────────────────────────────────────────
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean bl) {
-        double mx = event.x(), my = event.y();
-        int btn = event.button();
-
+    public boolean mouseClicked(double mx, double my, int btn) {
         // 1. Navigation Tabs click
         if (my >= TABS_Y && my <= TABS_Y + TABS_H) {
             int tabW = Math.min(130, (width - 24) / Tab.values().length);
@@ -636,7 +631,7 @@ public class SoundCloudScreen extends Screen {
         // 4. Bottom Player Dock interactions
         if (handlePlayerDockClicks(mx, my, btn)) return true;
 
-        return super.mouseClicked(event, bl);
+        return super.mouseClicked(mx, my, btn);
     }
 
     private boolean handleTrackListClicks(double mx, double my, int btn) {
@@ -891,16 +886,14 @@ public class SoundCloudScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
+    public boolean mouseReleased(double mx, double my, int btn) {
         draggingProg = false;
         draggingVol = false;
-        return super.mouseReleased(event);
+        return super.mouseReleased(mx, my, btn);
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-        double mx = event.x();
-
+    public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
         if (draggingVol) {
             int rx = width - 150;
             int volW = 60;
@@ -921,28 +914,26 @@ public class SoundCloudScreen extends Screen {
             return true;
         }
 
-        return super.mouseDragged(event, dx, dy);
+        return super.mouseDragged(mx, my, btn, dx, dy);
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double hScroll, double vScroll) {
+    public boolean mouseScrolled(double mx, double my, double amount) {
         if (activeTab != Tab.SETTINGS) {
             List<SoundCloudTrack> list = getActiveList();
             int top = LIST_TOP;
             int bot = height - BAR_H - 4;
             int vis = (bot - top) / ITEM_H;
             if (my >= top && my <= bot) {
-                scrollOffset = Math.max(0, Math.min(scrollOffset - (int) vScroll, Math.max(0, list.size() - vis)));
+                scrollOffset = Math.max(0, Math.min(scrollOffset - (int) amount, Math.max(0, list.size() - vis)));
                 return true;
             }
         }
-        return super.mouseScrolled(mx, my, hScroll, vScroll);
+        return super.mouseScrolled(mx, my, amount);
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
-        int key = event.key();
-
+    public boolean keyPressed(int key, int scanCode, int modifiers) {
         // Enter key
         if (key == 257) {
             if (searchBox.isFocused()) {
@@ -970,7 +961,7 @@ public class SoundCloudScreen extends Screen {
             return true;
         }
 
-        return super.keyPressed(event);
+        return super.keyPressed(key, scanCode, modifiers);
     }
 
     @Override
