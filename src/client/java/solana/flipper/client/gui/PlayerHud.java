@@ -3,13 +3,12 @@ package solana.flipper.client.gui;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import solana.flipper.api.SoundCloudTrack;
 import solana.flipper.client.audio.AudioPlayer;
 import solana.flipper.config.ModConfig;
 
 /**
- * Modernized in-game music player HUD (1.20.1).
+ * Modernized in-game music player HUD (1.19.2).
  */
 public class PlayerHud {
 
@@ -21,13 +20,12 @@ public class PlayerHud {
 
     public static void register() {
         INSTANCE = new PlayerHud();
-        HudRenderCallback.EVENT.register((guiGraphics, tickDelta) -> {
-            INSTANCE.render(guiGraphics, tickDelta);
+        HudRenderCallback.EVENT.register((poseStack, tickDelta) -> {
+            INSTANCE.render(new GuiGraphics(poseStack), tickDelta);
         });
     }
 
     // ── Size presets ──────────────────────────────────────────────────────────
-    // { width, height-compact, height-full }
     private static final int[][] SIZES = {
             {180, 24, 46},   // S
             {250, 26, 52},   // M
@@ -169,7 +167,6 @@ public class PlayerHud {
             int btnW = 18;
             int gap = 3;
 
-            // 5 buttons: ⏮ ⏯ ⏭ 🔀 🔁
             int totalBtnW = 5 * btnW + 4 * gap;
             int startX = x + (w - totalBtnW) / 2;
 
@@ -223,7 +220,6 @@ public class PlayerHud {
         int pbX = lastX + PAD;
         int pbW = lastW - PAD * 2;
 
-        // Progress bar seek
         if (my >= pbY - 3 && my <= pbY + 7 && track != null && track.getDurationMs() > 0) {
             float frac = (float) Math.max(0, Math.min(1, (mx - pbX) / pbW));
             player.seekToSeconds((int) (frac * track.getDurationMs() / 1000));
@@ -231,7 +227,6 @@ public class PlayerHud {
             return true;
         }
 
-        // Buttons row
         if (cfg.hudButtons) {
             int btnY = lastY + lastH - 16;
             int btnH = 12;
@@ -248,7 +243,6 @@ public class PlayerHud {
                 if (mx >= startX + (btnW + gap) * 4 && mx <= startX + (btnW + gap) * 4 + btnW) { player.cycleRepeat(); return true; }
             }
 
-            // Volume bar on left
             int volW = Math.max(12, startX - lastX - 12);
             int volX = lastX + PAD;
             if (mx >= volX && mx <= volX + volW && my >= btnY && my <= btnY + btnH) {
@@ -258,7 +252,6 @@ public class PlayerHud {
             }
         }
 
-        // Drag: top title area
         if (my <= lastY + lastH / 2) {
             dragging = true;
             dragOffX = mx - lastX;
