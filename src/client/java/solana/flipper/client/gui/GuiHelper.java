@@ -1,7 +1,6 @@
 package solana.flipper.client.gui;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Modern visual styling and drawing utilities for CloudBeats GUI.
