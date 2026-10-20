@@ -1,6 +1,6 @@
 package solana.flipper.client.gui;
 
-import net.minecraft.client.gui.GuiGraphics;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -83,24 +83,22 @@ public class SoundCloudScreen extends Screen {
         // Search text box
         searchBox = new EditBox(font, searchX, 12, searchW, 20, Component.literal("Search"));
         searchBox.setMaxLength(512);
-        searchBox.setHint(Component.literal("Search track or paste URL / MP3 path..."));
+        searchBox.setSuggestion("Search track or paste URL / MP3 path...");
         addRenderableWidget(searchBox);
 
         // Search Button
         int btnW = 54;
-        addRenderableWidget(Button.builder(Component.literal("Search"), btn -> doSearch())
-                .bounds(searchX + searchW + 4, 12, btnW, 20).build());
+        addRenderableWidget(new Button(searchX + searchW + 4, 12, btnW, 20, Component.literal("Search"), btn -> doSearch()));
 
         // Clear Search Button
-        addRenderableWidget(Button.builder(Component.literal("Clear"), btn -> {
+        addRenderableWidget(new Button(searchX + searchW + btnW + 8, 12, 46, 20, Component.literal("Clear"), btn -> {
             searchBox.setValue("");
             searchResults.clear();
             searchStatus = "";
-        }).bounds(searchX + searchW + btnW + 8, 12, 46, 20).build());
+        }));
 
         // Close Button (top-right)
-        addRenderableWidget(Button.builder(Component.literal("✕"), btn -> onClose())
-                .bounds(width - 28, 12, 20, 20).build());
+        addRenderableWidget(new Button(width - 28, 12, 20, 20, Component.literal("✕"), btn -> onClose()));
     }
 
     private void switchTab(Tab tab) {
@@ -197,7 +195,8 @@ public class SoundCloudScreen extends Screen {
     // ── Render ───────────────────────────────────────────────────────────────
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float delta) {
+    public void render(PoseStack poseStack, int mx, int my, float delta) {
+        GuiGraphics g = new GuiGraphics(poseStack);
         tooltipText = null;
         float animSec = (System.currentTimeMillis() - lastAnimTime) / 1000f;
 
@@ -221,7 +220,7 @@ public class SoundCloudScreen extends Screen {
         renderPlayerDock(g, mx, my, animSec);
 
         // 6. Vanilla Widgets (Search box & buttons)
-        super.render(g, mx, my, delta);
+        super.render(poseStack, mx, my, delta);
 
         // 7. Tooltip on top
         if (tooltipText != null) {
