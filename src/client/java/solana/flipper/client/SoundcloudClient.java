@@ -2,7 +2,6 @@ package solana.flipper.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import solana.flipper.Soundcloud;
@@ -18,7 +17,7 @@ public class SoundcloudClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        Soundcloud.LOGGER.info("[SoundCloud] Client initialized.");
+        Soundcloud.LOGGER.info("[SoundCloud] Client initialized (1.20.1).");
 
         FavoritesManager.load();
         KeyBindings.register();
@@ -40,14 +39,16 @@ public class SoundcloudClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
     }
 
+    private boolean leftWasDown = false;
+
     private void tick(Minecraft mc) {
         AudioPlayer player = AudioPlayer.getInstance();
         PlayerHud hud = PlayerHud.getInstance();
 
         // Forward mouse position to HUD for hover effects
-        if (hud != null && mc.screen == null) {
-            double mx = mc.mouseHandler.getScaledXPos(mc.getWindow());
-            double my = mc.mouseHandler.getScaledYPos(mc.getWindow());
+        if (hud != null && mc.screen == null && mc.getWindow() != null) {
+            double mx = mc.mouseHandler.xpos() * (double) mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth();
+            double my = mc.mouseHandler.ypos() * (double) mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight();
             hud.updateMouse(mx, my);
 
             boolean leftDown = mc.mouseHandler.isLeftPressed();
@@ -66,53 +67,47 @@ public class SoundcloudClient implements ClientModInitializer {
             }
         }
 
-        // ── Keybinds ──────────────────────────────────────────────────────────
-
-        while (KeyBindings.openPlayer.consumeClick()) {
-            if (mc.screen == null) mc.setScreen(new SoundCloudScreen());
-            else if (mc.screen instanceof SoundCloudScreen) mc.setScreen(null);
+        // Keybinds
+        if (KeyBindings.openPlayer.consumeClick()) {
+            mc.setScreen(new SoundCloudScreen());
         }
-
-        while (KeyBindings.playPause.consumeClick()) {
-            if (player.getState() == AudioPlayer.State.PLAYING ||
-                player.getState() == AudioPlayer.State.PAUSED) player.pause();
+        if (KeyBindings.playPause.consumeClick()) {
+            player.pause();
         }
-
-        while (KeyBindings.nextTrack.consumeClick())    player.next();
-        while (KeyBindings.prevTrack.consumeClick())    player.previous();
-        while (KeyBindings.seekForward.consumeClick())  player.seekRelative(10);
-        while (KeyBindings.seekBackward.consumeClick()) player.seekRelative(-10);
-
-        while (KeyBindings.volumeUp.consumeClick()) {
+        if (KeyBindings.nextTrack.consumeClick()) {
+            player.next();
+        }
+        if (KeyBindings.prevTrack.consumeClick()) {
+            player.previous();
+        }
+        if (KeyBindings.seekForward.consumeClick()) {
+            player.seekRelative(10);
+        }
+        if (KeyBindings.seekBackward.consumeClick()) {
+            player.seekRelative(-10);
+        }
+        if (KeyBindings.volumeUp.consumeClick()) {
             player.setVolume(player.getVolume() + 0.1f);
-            bar(mc, String.format("§6[SC] §fVol: §e%.0f%%", player.getVolume() * 100));
+            if (mc.player != null) {
+                mc.player.displayClientMessage(
+                    Component.literal("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
+            }
         }
-        while (KeyBindings.volumeDown.consumeClick()) {
+        if (KeyBindings.volumeDown.consumeClick()) {
             player.setVolume(player.getVolume() - 0.1f);
-            bar(mc, String.format("§6[SC] §fVol: §e%.0f%%", player.getVolume() * 100));
+            if (mc.player != null) {
+                mc.player.displayClientMessage(
+                    Component.literal("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
+            }
         }
-
-        while (KeyBindings.toggleHud.consumeClick()) {
+        if (KeyBindings.toggleHud.consumeClick()) {
             PlayerHud.toggle();
-            bar(mc, PlayerHud.isVisible() ? "§6[SC] §fHUD §aON" : "§6[SC] §fHUD §cOFF");
         }
-
-        while (KeyBindings.hudCycleSize.consumeClick()) {
+        if (KeyBindings.hudCycleSize.consumeClick()) {
             PlayerHud.cycleSize();
-            String[] names = {"S", "M", "L"};
-            bar(mc, "§6[SC] §fHUD size: §e" + names[ModConfig.get().hudSize]);
         }
-
-        while (KeyBindings.hudToggleButtons.consumeClick()) {
+        if (KeyBindings.hudToggleButtons.consumeClick()) {
             PlayerHud.toggleButtons();
-            bar(mc, ModConfig.get().hudButtons ? "§6[SC] §fHUD: §afull" : "§6[SC] §fHUD: §7compact");
         }
-    }
-
-    private boolean leftWasDown = false;
-
-    private void bar(Minecraft mc, String msg) {
-        if (mc.player != null)
-            mc.player.displayClientMessage(Component.literal(msg), true);
     }
 }
