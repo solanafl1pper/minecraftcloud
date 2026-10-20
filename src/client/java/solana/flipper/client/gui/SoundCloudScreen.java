@@ -240,7 +240,7 @@ public class SoundCloudScreen extends Screen {
 
         // CloudBeats Brand & Logo
         g.drawString(font, "§6☁ §f§lCloudBeats", 14, 16, GuiHelper.C_TEXT_MAIN, false);
-        g.drawString(font, "§7v0.6.9", 98, 16, GuiHelper.C_TEXT_MUTED, false);
+        g.drawString(font, "§7v0.7.0", 98, 16, GuiHelper.C_TEXT_MUTED, false);
 
         // Status text below search if active
         if (activeTab == Tab.SEARCH && !searchStatus.isEmpty()) {
