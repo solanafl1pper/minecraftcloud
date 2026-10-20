@@ -3,11 +3,10 @@ package solana.flipper.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * All keybindings for the SoundCloud mod.
+ * All keybindings for the SoundCloud mod (1.20.1).
  */
 public class KeyBindings {
 
@@ -24,9 +23,7 @@ public class KeyBindings {
     public static KeyMapping hudToggleButtons;
 
     public static void register() {
-        KeyMapping.Category category = KeyMapping.Category.register(
-                Identifier.fromNamespaceAndPath("soundcloud", "player")
-        );
+        String category = "key.categories.soundcloud";
 
         openPlayer = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.soundcloud.open_player",
