@@ -1,26 +1,17 @@
 package solana.flipper.client.gui;
 
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.minecraft.client.DeltaTracker;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.Identifier;
 import solana.flipper.api.SoundCloudTrack;
 import solana.flipper.client.audio.AudioPlayer;
 import solana.flipper.config.ModConfig;
 
 /**
- * Modernized in-game music player HUD.
- *
- * Supports:
- * - COMPACT mode: Minimal title + glowing progress bar
- * - FULL mode: Title + animated equalizer + progress bar + playback controls (⏮ ⏯ ⏭ 🔀 🔁) + volume
- * - 3 Size presets: S (180px), M (250px), L (330px)
- * - 9 Screen anchors + interactive in-game drag positioning
+ * Modernized in-game music player HUD (1.20.1).
  */
-public class PlayerHud implements HudElement {
+public class PlayerHud {
 
     private static PlayerHud INSTANCE;
 
@@ -30,9 +21,9 @@ public class PlayerHud implements HudElement {
 
     public static void register() {
         INSTANCE = new PlayerHud();
-        HudElementRegistry.addLast(
-                Identifier.fromNamespaceAndPath("soundcloud", "player_hud"),
-                INSTANCE);
+        HudRenderCallback.EVENT.register((guiGraphics, tickDelta) -> {
+            INSTANCE.render(guiGraphics, tickDelta);
+        });
     }
 
     // ── Size presets ──────────────────────────────────────────────────────────
@@ -82,8 +73,7 @@ public class PlayerHud implements HudElement {
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    @Override
-    public void render(GuiGraphics g, DeltaTracker dt) {
+    public void render(GuiGraphics g, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen != null) return;
 
@@ -251,15 +241,10 @@ public class PlayerHud implements HudElement {
             int startX = lastX + (lastW - totalBtnW) / 2;
 
             if (my >= btnY && my <= btnY + btnH) {
-                // ⏮
                 if (mx >= startX && mx <= startX + btnW) { player.previous(); return true; }
-                // ⏯
                 if (mx >= startX + (btnW + gap) && mx <= startX + (btnW + gap) + btnW) { player.pause(); return true; }
-                // ⏭
                 if (mx >= startX + (btnW + gap) * 2 && mx <= startX + (btnW + gap) * 2 + btnW) { player.next(); return true; }
-                // 🔀
                 if (mx >= startX + (btnW + gap) * 3 && mx <= startX + (btnW + gap) * 3 + btnW) { player.setShuffle(!player.isShuffle()); return true; }
-                // 🔁
                 if (mx >= startX + (btnW + gap) * 4 && mx <= startX + (btnW + gap) * 4 + btnW) { player.cycleRepeat(); return true; }
             }
 
