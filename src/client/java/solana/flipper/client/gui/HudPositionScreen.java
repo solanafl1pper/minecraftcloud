@@ -1,14 +1,14 @@
 package solana.flipper.client.gui;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import solana.flipper.config.ModConfig;
 
 /**
- * Screen to choose HUD screen anchor position from a 3x3 grid (1.20.1).
+ * Screen to choose HUD screen anchor position from a 3x3 grid (1.19.2).
  */
 public class HudPositionScreen extends Screen {
 
@@ -28,14 +28,15 @@ public class HudPositionScreen extends Screen {
         super.init();
 
         int doneW = 100, doneH = 20;
-        addRenderableWidget(Button.builder(Component.literal("§aDone"), b -> {
+        addRenderableWidget(new Button(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH, Component.literal("§aDone"), b -> {
             minecraft.setScreen(parent);
-        }).bounds(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH).build());
+        }));
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float delta) {
-        renderBackground(g);
+    public void render(PoseStack poseStack, int mx, int my, float delta) {
+        renderBackground(poseStack);
+        GuiGraphics g = new GuiGraphics(poseStack);
 
         Font font = minecraft.font;
 
@@ -69,7 +70,7 @@ public class HudPositionScreen extends Screen {
             }
         }
 
-        super.render(g, mx, my, delta);
+        super.render(poseStack, mx, my, delta);
     }
 
     @Override
