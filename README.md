@@ -4,7 +4,7 @@
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11%20|%2026.3-brightgreen.svg?style=for-the-badge&logo=minecraft)
 ![Fabric](https://img.shields.io/badge/Loader-Fabric%20%E2%89%A50.19.2-blue.svg?style=for-the-badge)
-![Version](https://img.shields.io/badge/Release-v0.6.9-ff5500.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/Release-v0.7.0-ff5500.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)
 
 **Listen to SoundCloud, playlists, and local audio files directly inside Minecraft with a modern sleek UI & in-game HUD.**
@@ -69,7 +69,7 @@ All hotkeys are customizable in Minecraft's **Controls → Key Binds** menu unde
 ## 📥 Installation
 
 1. Install **[Fabric Loader](https://fabricmc.net/use/)** (version `≥ 0.19.2`) and **Fabric API** for Minecraft `1.21.11` or `26.3`.
-2. Download the latest `soundcloud-0.6.9.jar` from **[Releases](https://github.com/solanafl1pper/minecraftcloud/releases)**.
+2. Download the latest `soundcloud-0.7.0.jar` from **[Releases](https://github.com/solanafl1pper/minecraftcloud/releases)**.
 3. Drop the downloaded `.jar` file into your `.minecraft/mods` folder (or via PrismLauncher / CurseForge / Modrinth).
 4. Launch the game and press **`P`** to start listening!
 
@@ -92,7 +92,7 @@ cd minecraftcloud
 
 The compiled mod will be located in:
 ```
-build/libs/soundcloud-0.6.9.jar
+build/libs/soundcloud-0.7.0.jar
 ```
 
 ---
