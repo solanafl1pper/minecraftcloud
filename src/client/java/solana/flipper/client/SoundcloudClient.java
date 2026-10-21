@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
 import solana.flipper.Soundcloud;
 import solana.flipper.client.audio.AudioPlayer;
 import solana.flipper.client.gui.PlayerHud;
@@ -90,14 +91,14 @@ public class SoundcloudClient implements ClientModInitializer {
             player.setVolume(player.getVolume() + 0.1f);
             if (mc.player != null) {
                 mc.player.displayClientMessage(
-                    Component.literal("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
+                    new TextComponent("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
             }
         }
         if (KeyBindings.volumeDown.consumeClick()) {
             player.setVolume(player.getVolume() - 0.1f);
             if (mc.player != null) {
                 mc.player.displayClientMessage(
-                    Component.literal("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
+                    new TextComponent("§6[SoundCloud]§r Volume: " + (int)(player.getVolume() * 100) + "%"), true);
             }
         }
         if (KeyBindings.toggleHud.consumeClick()) {
