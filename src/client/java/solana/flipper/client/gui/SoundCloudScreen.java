@@ -85,21 +85,21 @@ public class SoundCloudScreen extends Screen {
         searchBox = new EditBox(font, searchX, 12, searchW, 20, new TextComponent("Search"));
         searchBox.setMaxLength(512);
         searchBox.setSuggestion("Search track or paste URL / MP3 path...");
-        addRenderableWidget(searchBox);
+        children.add(searchBox);
 
         // Search Button
         int btnW = 54;
-        addRenderableWidget(new Button(searchX + searchW + 4, 12, btnW, 20, new TextComponent("Search"), btn -> doSearch()));
+        addButton(new Button(searchX + searchW + 4, 12, btnW, 20, new TextComponent("Search"), btn -> doSearch()));
 
         // Clear Search Button
-        addRenderableWidget(new Button(searchX + searchW + btnW + 8, 12, 46, 20, new TextComponent("Clear"), btn -> {
+        addButton(new Button(searchX + searchW + btnW + 8, 12, 46, 20, new TextComponent("Clear"), btn -> {
             searchBox.setValue("");
             searchResults.clear();
             searchStatus = "";
         }));
 
         // Close Button (top-right)
-        addRenderableWidget(new Button(width - 28, 12, 20, 20, new TextComponent("✕"), btn -> onClose()));
+        addButton(new Button(width - 28, 12, 20, 20, new TextComponent("✕"), btn -> onClose()));
     }
 
     private void switchTab(Tab tab) {
@@ -221,6 +221,7 @@ public class SoundCloudScreen extends Screen {
         renderPlayerDock(g, mx, my, animSec);
 
         // 6. Vanilla Widgets (Search box & buttons)
+        searchBox.render(poseStack, mx, my, delta);
         super.render(poseStack, mx, my, delta);
 
         // 7. Tooltip on top
