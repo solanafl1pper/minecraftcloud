@@ -28,7 +28,7 @@ public class HudPositionScreen extends Screen {
         super.init();
 
         int doneW = 100, doneH = 20;
-        addRenderableWidget(new Button(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH, new TextComponent("§aDone"), b -> {
+        addButton(new Button(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH, new TextComponent("§aDone"), b -> {
             minecraft.setScreen(parent);
         }));
     }
