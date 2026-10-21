@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
 import solana.flipper.api.SoundCloudAPI;
 import solana.flipper.api.SoundCloudPlaylist;
 import solana.flipper.api.SoundCloudTrack;
@@ -68,7 +69,7 @@ public class SoundCloudScreen extends Screen {
     private final AudioPlayer player = AudioPlayer.getInstance();
 
     public SoundCloudScreen() {
-        super(Component.literal("CloudBeats"));
+        super(new TextComponent("CloudBeats"));
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
@@ -81,24 +82,24 @@ public class SoundCloudScreen extends Screen {
         int searchX = 140;
 
         // Search text box
-        searchBox = new EditBox(font, searchX, 12, searchW, 20, Component.literal("Search"));
+        searchBox = new EditBox(font, searchX, 12, searchW, 20, new TextComponent("Search"));
         searchBox.setMaxLength(512);
         searchBox.setSuggestion("Search track or paste URL / MP3 path...");
         addRenderableWidget(searchBox);
 
         // Search Button
         int btnW = 54;
-        addRenderableWidget(new Button(searchX + searchW + 4, 12, btnW, 20, Component.literal("Search"), btn -> doSearch()));
+        addRenderableWidget(new Button(searchX + searchW + 4, 12, btnW, 20, new TextComponent("Search"), btn -> doSearch()));
 
         // Clear Search Button
-        addRenderableWidget(new Button(searchX + searchW + btnW + 8, 12, 46, 20, Component.literal("Clear"), btn -> {
+        addRenderableWidget(new Button(searchX + searchW + btnW + 8, 12, 46, 20, new TextComponent("Clear"), btn -> {
             searchBox.setValue("");
             searchResults.clear();
             searchStatus = "";
         }));
 
         // Close Button (top-right)
-        addRenderableWidget(new Button(width - 28, 12, 20, 20, Component.literal("✕"), btn -> onClose()));
+        addRenderableWidget(new Button(width - 28, 12, 20, 20, new TextComponent("✕"), btn -> onClose()));
     }
 
     private void switchTab(Tab tab) {
