@@ -12,39 +12,39 @@ repositories {
 	maven { url "https://maven.shedaniel.me/" }
 }
 
-loom {
-	splitEnvironmentSourceSets()
+sourceSets {
+	main {
+		java {
+			srcDirs += "src/client/java"
+		}
+		resources {
+			srcDirs += "src/client/resources"
+		}
+	}
+}
 
+loom {
 	mods {
 		"soundcloud" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
 		}
 	}
-
 }
 
 dependencies {
-	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings loom.officialMojangMappings()
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-	// Mod Menu integration
 	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
-	// JLayer for MP3 decoding
 	implementation "javazoom:jlayer:1.0.1"
 	include "javazoom:jlayer:1.0.1"
 
-	// JAAD for pure-Java AAC decoding (SoundCloud streams)
 	implementation "de.sfuhrm:jaad:0.8.7"
 	include "de.sfuhrm:jaad:0.8.7"
 
-	// Gson for JSON config
 	implementation "com.google.code.gson:gson:2.10.1"
 }
 
