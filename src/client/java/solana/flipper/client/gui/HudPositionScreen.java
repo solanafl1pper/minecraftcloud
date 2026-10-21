@@ -4,11 +4,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextComponent;
 import solana.flipper.config.ModConfig;
 
 /**
- * Screen to choose HUD screen anchor position from a 3x3 grid (1.19.2).
+ * Screen to choose HUD screen anchor position from a 3x3 grid (1.18.2).
  */
 public class HudPositionScreen extends Screen {
 
@@ -17,7 +17,7 @@ public class HudPositionScreen extends Screen {
     private int selCol;
 
     public HudPositionScreen(Screen parent) {
-        super(Component.literal("HUD Position"));
+        super(new TextComponent("HUD Position"));
         this.parent = parent;
         this.selRow = ModConfig.get().hudAnchorRow;
         this.selCol = ModConfig.get().hudAnchorCol;
@@ -28,7 +28,7 @@ public class HudPositionScreen extends Screen {
         super.init();
 
         int doneW = 100, doneH = 20;
-        addRenderableWidget(new Button(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH, Component.literal("§aDone"), b -> {
+        addRenderableWidget(new Button(width / 2 - doneW / 2, height / 2 + 75, doneW, doneH, new TextComponent("§aDone"), b -> {
             minecraft.setScreen(parent);
         }));
     }
@@ -92,7 +92,7 @@ public class HudPositionScreen extends Screen {
                     cfg.hudAnchorRow = row;
                     cfg.hudAnchorCol = col;
                     cfg.hudX = -1;
-                    cfg.hudY = -1; // Reset manual drag coordinates
+                    cfg.hudY = -1;
                     cfg.save();
                     return true;
                 }
