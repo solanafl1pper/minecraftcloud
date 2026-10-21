@@ -98,16 +98,16 @@ public class PlayerHud {
             y = Math.max(0, Math.min(sh - h, cfg.hudY));
         } else {
             int margin = 8;
-            x = switch (cfg.hudAnchorCol) {
-                case 0 -> margin;
-                case 2 -> sw - w - margin;
-                default -> (sw - w) / 2;
-            };
-            y = switch (cfg.hudAnchorRow) {
-                case 0 -> margin;
-                case 1 -> (sh - h) / 2;
-                default -> sh - h - margin;
-            };
+            switch (cfg.hudAnchorCol) {
+                case 0: x = margin; break;
+                case 2: x = sw - w - margin; break;
+                default: x = (sw - w) / 2; break;
+            }
+            switch (cfg.hudAnchorRow) {
+                case 0: y = margin; break;
+                case 1: y = (sh - h) / 2; break;
+                default: y = sh - h - margin; break;
+            }
         }
 
         lastX = x; lastY = y; lastW = w; lastH = h;
